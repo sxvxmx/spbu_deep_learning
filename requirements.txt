@@ -2,10 +2,12 @@ albumentations
 jupyter
 matplotlib
 numpy
+pandas
 scikit-learn
 scipy
 torch
 torchvision
+wandb
 
 black
 isort
