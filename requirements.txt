@@ -1,0 +1,13 @@
+albumentations
+jupyter
+matplotlib
+numpy
+scikit-learn
+scipy
+torch
+torchvision
+
+black
+isort
+mypy
+pylint
