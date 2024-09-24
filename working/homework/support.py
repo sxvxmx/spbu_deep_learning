@@ -1,5 +1,5 @@
 """Support file with classes/functions which are used in multiple notebooks"""
-#8.7 pylint yay
+#8.41 pylint yay
 import numpy as np
 
 
@@ -49,11 +49,11 @@ class Neuron:
         #classical learning rate optimizer
         if self.optimizer == "classic":
             for i in range(self.iter):
-                grad = self.grad(data,y, 0.001)
+                gradient = self.grad(data,y, 0.0001)
                 for o,item in enumerate(self.weights):
-                    self.weights[o] -= grad[o] * self.learning_rate
+                    self.weights[o] -= gradient[o] * self.learning_rate
                 if self.with_bias is True:
-                    self.bias -= grad[-1] * self.learning_rate
+                    self.bias -= gradient[-1] * self.learning_rate
                 else:
                     self.bias = 0
                 theta = list(self.weights)
@@ -61,14 +61,14 @@ class Neuron:
                 loss = self.loss_function(y, self.__predict(data, theta))
 
                 self.metadata["loss"].append(np.round(loss,4))
-                self.metadata["grad"].append(np.round(grad,4))
+                self.metadata["grad"].append(np.round(gradient,4))
             return self.metadata
         #adam optimizer
         if self.optimizer == "adam":
             for i in range(1,self.iter+1):
-                grad = self.grad(data, y, 0.001)
-                self.first_moment = self.beta1*self.first_moment + (1 - self.beta1) * grad
-                self.second_moment = self.beta2*self.second_moment + (1-self.beta2) * (grad**2)
+                gradient = self.grad(data, y, 0.0001)
+                self.first_moment = self.beta1*self.first_moment + (1 - self.beta1) * gradient
+                self.second_moment = self.beta2*self.second_moment + (1-self.beta2) * (gradient**2)
                 bias_corrected_fm = self.first_moment/(1-self.beta1**i)
                 bias_corrected_sm = self.second_moment/(1-self.beta2**i)
 
@@ -86,7 +86,7 @@ class Neuron:
                 loss = self.loss_function(y, self.__predict(data, theta))
 
                 self.metadata["loss"].append(np.round(loss,4))
-                self.metadata["grad"].append(np.round(grad,4))
+                self.metadata["grad"].append(np.round(gradient,4))
 
 
     def predict(self, data:np.ndarray) -> np.ndarray:
@@ -146,3 +146,55 @@ class Neuron:
             y_hat = self.__predict(data, theta_hat)
             grad.append((self.loss_function(y_true, y_hat) - self.loss_function(y_true, y))/alpha)
         return np.array(grad)
+    
+def grad_func(data:np.ndarray,
+        y:np.ndarray,
+        initial_weights:np.ndarray[float],
+        initial_bias:float = 0,
+        learning_rate:float = 0.01,
+        epochs:int = 10,) -> dict:
+    """functional grad realization"""
+    def __mse(y_true, y_pred):
+        return np.mean((y_true-y_pred)**2)
+    
+    def __sigmoid(x):
+        return 1/(1 + np.exp(-x))
+    
+    def __predict(data:np.ndarray, theta) -> np.ndarray:
+        if len(data.shape) == 1:
+            data = data.reshape(-1,1)
+        y_pred = []
+        for i,item in enumerate(data):
+            x = list(item)
+            x.append(1)
+            y_pred.append(__sigmoid(np.dot(x, theta)))
+        return np.array(y_pred)
+
+    def __subgrad(data, y_true, alpha, weights, bias) -> np.ndarray:
+        gradient = []
+        theta = weights.copy()
+        theta.append(bias)
+        for i,item in enumerate(theta):
+            theta_hat = theta.copy()
+            theta_hat[i] += alpha
+            y = __predict(data, theta)
+            y_hat = __predict(data, theta_hat)
+            gradient.append((__mse(y_true, y_hat) - __mse(y_true, y))/alpha)
+        return np.array(gradient)
+
+    metadata = {"loss":[], "grad":[], "weights":[], "bias":[]}
+    for i in range(epochs):
+        grad = __subgrad(data,y, 0.001, initial_weights, initial_bias)
+        for o,item in enumerate(initial_weights):
+            initial_weights[o] -= grad[o] * learning_rate
+            initial_bias -= grad[-1] * learning_rate
+
+        theta = list(initial_weights)
+        theta.append(initial_bias)
+        loss = __mse(y, __predict(data, theta))
+
+        metadata["loss"].append(np.round(loss,4))
+        metadata["grad"].append(np.round(grad,4))
+        metadata["weights"].append(np.round(initial_weights,4))
+        metadata["bias"].append(np.round(initial_bias,4))
+    return metadata
